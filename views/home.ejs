@@ -1,0 +1,44 @@
+<% layout("/layouts/boilerplate") %>
+<style>
+  .home {
+    text-align: center;
+    margin-top: 1rem;
+    border: 2px solid black;
+    border-radius: 1rem;
+    padding: 1rem 0;
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  h1 {
+    color: #065858;
+  }
+  .homeBtn {
+    background-color: #008080;
+    color: #fff;
+    border-radius: 1.5rem;
+    padding: 0.5rem 1.5rem;
+    font-size: 1.5rem;
+    margin-top: 3rem;
+  }
+  .homeBtn:hover {
+    background-color: #fff;
+    color: #008080;
+    border: 2px solid #008080;
+  }
+  body {
+    background-image: url("/bg.jpg");
+    background-size: cover;
+    background-repeat: none;
+    background-attachment: center;
+    margin: 0;
+    padding: 0;
+  }
+</style>
+<div class="home">
+  <h1>Welcome to HavenHub</h1>
+  <h2>Find Places to stay</h2>
+  <h2>Big, small, we have it all</h2>
+  <h2>Family-friendly stays with full kitchens</h2>
+  <a href="/listings"
+    ><button class="btn btn-lg homeBtn">Explore your stays!</button></a
+  >
+</div>

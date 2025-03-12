@@ -1,0 +1,1776 @@
+******************************************** Project Phase 1 (Part A)**********************************************
+****************** 1. Basic Set up *****************
+* Make a directory named Major Project and install express, ejs and mongoose.
+* Write the basic code
+
+const express = require("express");
+const app = express();
+const mongoose = require("mongoose");
+
+main()
+  .then(() => {
+    console.log("connected to DB");
+  })
+  .catch((err) => {
+    console.log(err);
+  });
+
+async function main() {
+  await mongoose.connect("mongodb://127.0.0.1:27017/wanderlust");
+}
+
+app.get("/", (req, res) => {
+  res.send("Hi, I am root");
+});
+
+app.listen(8080, () => {
+  console.log("server is listening to port 8080");
+});
+
+******************* 2. Listing Model ******************
+* To enhance the organization and scalability of our project, we'll create a separate folder named 'models' to store all the models, exporting them from there instead of writing them all in `app.js`.
+* Read the listing.js code
+* Set a request to test whether the database is correctly working
+
+app.get("/testListing", async (req, res) => {
+  let sampleListing = new Listing({
+    title: "Oggy's Home",
+    description: "Infinitely big",
+    price: 6000,
+    location: "Vegas",
+    country: "USA",
+  });
+  await sampleListing.save();
+  console.log("sample was saved");
+  res.send("successful testing");
+});
+
+******************* 3. Initialize Data ******************
+* We created a new folder 'init' and put all the sample data inside a file 'data.js' in that folder.
+* Created another file 'index.js' in the same folder to initialize the DB. It connects with the DB and deletes all the prior data present in it and inserts the sample data. There was one problem while initializing the data, it was in the image field. The image field  in the sample data was different from the image field in Schema. So we created a new imageSchema and assigned it to the image field in our original Schema so that it can match with the sample data.
+* Read index.js.
+
+***************** 4. Index Route **************
+* Created the index route and index.ejs template
+
+**************** 5. Show Route ************
+* Created a simple show route without any styling that just displays plain info.
+* To add commas to a number in JS, there is a function '.toLocaleString()', and to add commas according to Indian Standard, we write "en-IN" inside the brackets.
+
+**************** 6. New/Create Route ***********
+* Got an error while rendering the new route because "/listings/new" was kept after "listings/:id" in the show route, so it was treating 'new' as an ID and kept searching for it in the DB and gave error. To resolve it, we moved the new route above the show route.
+* Create route works, read app.js
+
+************** 7. Update & Delete Route ****************
+* Nothing new as such, read app.js
+
+******************************************** Project Phase 1 (Part B)**********************************************
+***************** 1. Creating Boilerplate ************
+* ejs-mate is a widely-used npm package that enhances the EJS templating engine by adding support for layouts, partials, and blocks. This allows developers to create reusable components, such as navbars and footers, without needing to duplicate them across multiple templates. By using ejs-mate, you can define a master layout that includes these common elements, simplifying the process of maintaining consistent design across your application.
+* A boilerplate is a sample code that exists in every file.
+* We design a boilerplate for our ejs templates that also includes the link of common css and js files. Here, our boilerplate is 
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WanderLust</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <h1>WanderLust</h1>
+    <div class="container"><%- body %></div> <!-- This line allows us to use this boilerplate in other ejs files -->
+  </body>
+</html>
+
+* To use this boilerplate in other ejs files, remove all the code from the file except for the body and write '<% layout("<boilerplate location>") %>' on the top.
+NOTE: It is not compulsory to use ejs-mate, but it is one of the ways of doing things efficiently, other methods can be used according to requirement.
+
+************* 2. Navbar **************
+* Used bootstrap to build the navbar.
+* We created a separate file for 'navbar' inside the 'includes' folder in 'views'. This was done to add modularity to the code and make it more comprehensible.
+* To include the navbar in boilerplate.ejs, we wrote '<%- include("../includes/navbar.ejs") %>'
+
+*********** 3. Footer ***********
+* Added the file footer.ejs in includes and included it in boilerplate.ejs just before scripts
+
+*********** 4. Styling Index ***********
+* Styled the index.ejs page
+
+*********** 5. Styling New Listing and Edit Listing *********
+* Added the boilerplate layouts to the New and Edit pages.
+* Used bootstrap's form-label (for labels) and form-control (for inputs) classes to style the form.
+* Created an outer div for the form and gave it the class row, and one div right below it and gave it the class col-8, which means if the screen is divided into 12 cols, then this form will occupy 8 cols. Also added offset-2 class in col div to place the form in center.
+
+******************************************** Project Phase 1 (Part C) **********************************************
+*********** 1. Client Side Validation (Form) ***********
+* There are 2 types of validations in a website: client side validation and server side validation
+* Client side validation ensures that the data coming from the frontend to backend should be useful and in appropriate format.
+* Server side validation ensures that the data being inserted in DB is consistent with DB schema, and provides error handling.
+* Although we already made the title, description, location, etc compulsory in the listing schema, but that does not prevent wrong submissions. To do so, we added required keyword in the form made in new.ejs in all the mandatory fields.
+* The error messages we get after adding this 'required' keyword are the browser defaults, and they are different in different browsers. So to standardize our website, we use bootstrap's styling. 
+* Firstly, we disable the browser's default setting by using the 'novalidate' attribute in our form in new.ejs.
+* Then, we copied the bootstrap's predefined script for non submission of forms and added it to boilerplate.ejs, and added the class 'needs-validation' to the form.
+
+*********** 2. Success and Failure text ***********
+* In this module, we added the success and failure texts in form using 'valid-feedback' and 'invalid-feedback' classes.
+* After that, we added validations and failure texts in the edit listing form, in the same way as we did above.
+* Still our backend is vulnerable to invalid inputs. If someone sends a request using 'Postman' or 'Hoppscotch', he would able to send invalid inputs to our backend. To avoid this, we will implement server side validations.
+
+********** 3. Custom Error Handling *********
+* Here, we added a basic custom error handler in case of validation errors at the server side, that is, for asynchronous errors.
+
+app.post("/listings", async (req, res, next) => {
+  try {
+    const newListing = Listing(req.body.listing);
+    await newListing.save();
+    res.redirect("/listings");
+  } catch (err) {
+    next(err);
+  }
+});
+app.use((err, req, res, next) => {
+  res.send("something went wrong");
+});
+
+********** 4. Add wrapAsync *********
+* Created a file wrapAsync.js in utils/js, that contains the following code
+module.exports = (fn) => {
+  return (req, res, next) => {
+    fn(req, res, next).catch(next);
+  };
+};
+
+Q. If we are passing our function 'fn' to wrapAsync that takes our custom arguments, how is it able to execute 'fn' with req, res and next?
+Ans: In JavaScript, functions are first-class citizens, meaning they can be passed around as arguments, returned from other functions, and invoked with different contexts and arguments. The wrapAsync function leverages this feature to handle asynchronous route handlers in Express.js.
+
+* Required it in app.js and added it to async function
+app.post(
+  "/listings",
+  wrapAsync(async (req, res, next) => {
+    const newListing = Listing(req.body.listing);
+    await newListing.save();
+    res.redirect("/listings");
+  })
+);
+
+********** 5. Add ExpressError **********
+* Created a separate file and wrote the ExpressError class in it. Required it in app.js and handled the 'page not found' error like this
+app.all("*", (req, res, next) => {
+  next(new ExpressError(404, "Page not found!"));
+});
+
+* Added 'wrapAsync' to all async functions
+* Another potential error is missing listing object in the create route. Custom errors like this one can be handled as shown
+app.post(
+  "/listings",
+  wrapAsync(async (req, res, next) => {
+    if (!req.body.listing) {
+      throw new ExpressError(400, "Send valid data for listing!");
+    }
+    const newListing = Listing(req.body.listing);
+    await newListing.save();
+    res.redirect("/listings");
+  })
+);
+
+********** 6. error.ejs **********
+* Created an ejs template to display errors in style. Used bootstrap danger alert to created error dialog box.
+* Along with error.ejs, we rendered 'message' as well to display the error message in the dialog.
+
+********* 7. Validation for Schema *********
+* In the post request of '/listings', we only check if the listing object exists and do not check whether every field in that object exists.
+* If someone just adds a listing[title],[price],[country] then also he would be able to add a new listing, but that would be incomplete.
+* To avoid this, we could either check for existence of each field in app.js, but that would be a very tedious task. To do in an efficient way, we use 'Joi'.
+* "joi" is an npm package whose job is to validate our schema. It basically creates another schema, and it is not a mongoose schema, it is a server side validation schema.
+* The Joi Schema can be made as follows
+
+const Joi = require("joi");
+
+module.exports.listingSchema = Joi.object({
+  listing: Joi.object({
+    title: Joi.string().required(),
+    description: Joi.string().required(),
+    location: Joi.string().required(),
+    country: Joi.string().required(),
+    price: Joi.string().required().min(0),
+    image: Joi.string().allow("", null),
+  }).required(),
+});
+
+* Now, the error in individual fields will handled as shown:
+app.post(
+  "/listings",
+  wrapAsync(async (req, res, next) => {
+    let result = listingSchema.validate(req.body);
+    if (result.error) {
+      throw new ExpressError(400, result.error);
+    }
+    const newListing = Listing(req.body.listing);
+    await newListing.save();
+    res.redirect("/listings");
+  })
+);
+
+********* 7. Middleware for Validation for Schema *********
+* In this module we created a middleware for validation for schema as shown
+
+const validateListing = (req, res, next) => {
+  let { error } = listingSchema.validate(req.body);
+  if (error) {
+    let errMsg = error.details.map((el) => el.message).join(",");
+    throw new ExpressError(400, error);
+  } else {
+    next();
+  }
+};
+
+* Now, instead of using any if/else for validation of the schema, we simply need to pass this middleware as a function argument.
+
+app.post(
+  "/listings",
+  validateListing,
+  wrapAsync(async (req, res, next) => {
+    const newListing = Listing(req.body.listing);
+    await newListing.save();
+    res.redirect("/listings");
+  })
+);
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MONGOOSE MIDDLEWARES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+(Project Phase 2 Part-A)
+
+NOTE: Read mongodb.txt for first two modules
+
+%%%%%%%%%%%%%%% 3. Creating Review model %%%%%%%%%%%%%
+% For now, we will create a basic review system in which anyone can add reviews, no authentication will be required and it will contain a comment, rating and date of review.
+
+% We created the review model as shown
+
+const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
+
+const reviewSchema = new Schema({
+  comment: String,
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now(),
+  },
+});
+
+module.exports = mongoose.model("Review", reviewSchema);
+
+% Added it to the listing model like this
+
+reviews: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Review",
+    },
+  ],
+
+%%%%%%%%%%%%%%% 4. Create Reviews (Step-1) %%%%%%%%%%%%%
+% Made a form to accept reviews in show.ejs
+% Created a review object to accept values just like we did with listing object.
+
+%%%%%%%%%%%%%%% 5. Create Reviews (Step-2) %%%%%%%%%%%%%
+% We will not send the post request of above form at /reviews because reviews are for a specific listing and we need to know that, so it will be sent to /listings/:id/reviews.
+% It is not forbidden to send it to /reviews, but in that we would have to embed the listing Id in the query string or find some other way to send the listing Id with the request.
+% Added the review route in app.js
+
+app.post("/listings/:id/reviews", async (req, res) => {
+  // const { id } = req.params;
+  let listing = await Listing.findById(req.params.id);
+  let newReview = new Review(req.body.review);
+
+  listing.reviews.push(newReview);
+
+  await newReview.save();
+  await listing.save();
+
+  // console.log("new review saved");
+  // res.send("new review saved");
+  res.redirect(`/listings/${listing._id}`);
+});
+
+%%%%%%%%%%%%%% 6. Validation for reviews %%%%%%%%%%%%%
+% Now we will add validation to reviews. This will be done in two steps, firstly we will add client side validation (in the form) and then we'll add server side validation (using Joi).
+% Added the client side validation using bootstrap's class 'needs-validation'. But still our backend is vulnerable as someone might send invalid data using AJAX, Postman, or Hoppscotch, so we'll implement server side validation.
+% Created the Joi schema for reviews
+
+module.exports.reviewSchema = Joi.object({
+  review: Joi.object({
+    rating: Joi.number().required().min(1).max(5),
+    comment: Joi.string().required(),
+  }).required(),
+});
+
+% Wrote the middleware for validation of review schema
+const validateReview = (req, res, next) => {
+  let { error } = reviewSchema.validate(req.body);
+  if (error) {
+    let errMsg = error.details.map((el) => el.message).join(",");
+    throw new ExpressError(400, error);
+  } else {
+    next();
+  }
+};
+
+% Passed the validateReview middleware in the post route
+
+app.post(
+  "/listings/:id/reviews",
+  validateReview,
+  wrapAsync(async (req, res) => {
+    let listing = await Listing.findById(req.params.id);
+    let newReview = new Review(req.body.review);
+
+    listing.reviews.push(newReview);
+
+    await newReview.save();
+    await listing.save();
+
+    res.redirect(`/listings/${listing._id}`);
+  })
+);
+
+%%%%%%%%%%%% 7. Render reviews %%%%%%%%%%%%
+% We will display the reviews in show.ejs just below the listing.
+% Used the populate method in Show Route in app.js to render the entire review object
+
+app.get(
+  "/listings/:id",
+  wrapAsync(async (req, res) => {
+    let { id } = req.params;
+    const listing = await Listing.findById(id).populate("reviews");
+    res.render("listings/show.ejs", { listing });
+  })
+);
+
+% Created a for loop in show.ejs to display the reviews
+
+      <h4>All Reviews</h4>
+      <ul>
+        <% for(review of listing.reviews){ %>
+          <li><%=review.comment%> <%=review.rating%> stars.</li>
+        <% } %>
+      </ul>
+
+%%%%%%%%%%%%% 8. Styling Reviews %%%%%%%%%%%
+% Added bootstrap styling to the reviews in form of cards.
+% This way you can display two cards in a row
+
+      <div class="row">
+        <% for(review of listing.reviews){ %>
+          <div class="card col-5 ms-3 mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Brad Pitt</h5>
+              <p class="card-text"><%=review.comment%></p>
+              <p class="card-text"><%=review.rating%> stars.</p>
+            </div>
+          </div>
+        <% } %>
+      </div>
+
+%%%%%%%%%%%% 9. Deleting Reviews %%%%%%%%%%%
+% Mongo $pull operator
+	> the $pull operator removes from an existing array all instances of a value or values that match a specified condition.
+% We need to use the pull operator because along with deleting the review from the 'reviews' collection, we are also supposed to delete that review's reference in the listing.reviews array. It can be done as shown
+
+app.delete("/listings/:id/reviews/:reviewId", async (req, res) => {
+  const { id, reviewId } = req.params;
+  await Listing.findByIdAndUpdate(id, { $pull: { reviews: reviewId } });
+  await Review.findByIdAndDelete(reviewId);
+  res.redirect(`/listings/${id}`);
+});
+
+%%%%%%%%%%%% 10. Handling Delete_Listing %%%%%%%%%%
+% Till now we've sorted that if any review is deleted, its reference in the listing should be deleted as well.
+% Now we need to make sure that if a listing is deleted, all its associated reviews should get deleted as well.
+% We'll create a post mongoose middleware in our listing schema that will delete all the reviews whose ID comes with the listing object
+
+listingSchema.post("findOneAndDelete", async (listing) => {
+  if (listing) {
+    await Review.deleteMany({ _id: { $in: listing.reviews } });
+  }
+});
+
+% So when the findByIdAndDelete will be called in DELETE route of a listing, it will invoke post mongoose middleware through findOneAndDelete and all the associated reviews will get deleted.
+
+
+
+******************************************* PROJECT PHASE 2 (PART-B) ****************************************
+************* 1. What is an Express Router *************
+* Express routers are a way to oraganize your application such that our primary app.js file does not get bloated.
+* It is not compulsory to use Express Routers, but when we are talking about large scale applications, it is a good industry practice to use express router as it divides the code into smaller pieces and makes it easier to comprehend.
+* Also, express router doesn't add any new functionalities to the code but helps in structuring it.
+* A router is an isolated instance of middlewares and routes. It is a mini-application capable of only performing middleware and routing functions. 
+* Here, we consider two collections: users and posts, and create different routes on them so that we can learn to use express routers.
+
+************ 2. Using the express router **********
+* We create two files in classroom/routes folder: user.js and post.js
+* Then we move all the user routes from server.js to user.js and all the post routes to post.js
+* Require express and create a new router object by executing the router method of express.
+* As we don't have access to app in user.js, so we replace all occurences of app (like in app.get()) by router.
+* Steps: > Require express and create router object in user.js
+	 > Move all the '/users' routes from server.js to user.js
+	 > replace app with router in user.js and export router object from user.js
+	 > require user.js in server.js
+	 > identify the common path in all the routes and write it app.use, like 'app.use("/users", users);'
+	 > remove this common route from all the routes in user.js
+* Code in server.js:
+const express = require("express");
+const app = express();
+const users = require("./routes/user.js");
+
+app.get("/", (req, res) => {
+  res.send("Hi, I am root!");
+});
+
+app.use("/users", users);
+
+app.listen(3000, () => {
+  console.log("server is listening to port 3000");
+});
+
+* Code in user.js:
+const express = require("express");
+const router = express.Router(); // To create a new router object, we execute the router method of express.
+
+router.get("/", (req, res) => {
+  res.send("GET for users");
+});
+router.get("/:id", (req, res) => {
+  res.send("GET for user id");
+});
+router.post("/", (req, res) => {
+  res.send("POST for users");
+});
+router.delete("/:id", (req, res) => {
+  res.send("Delete for user ID");
+});
+
+module.exports = router;
+
+NOTE: We can define more different routes in server.js, but if we have many routes that have a common path, then express router is nice way to segregate them.
+
+*************** 3. Restructuring Listings ************
+* Restructured the /listings route using express router
+* Required all the fields being used in the code in 'routes/listing.js'
+
+************** 4. Restructuring Reviews ***********
+* Restructured the /listings/:id/reviews route using express router in the same fashion.
+* While trying to add a review after restructuring, we encountered an error: "Cannot read properties of null (reading 'reviews')"
+* This error exists as the common route we considered was '/listings/:id/reviews', that means this ID never reaches the review route.
+* We handle this error using 'mergeParams' option of express.Router(), which is used when we want to merge the parent route with the child route. Here, the parent route is '/listings/:id/reviews' and child route is 'reviewId'.
+
+const router = express.Router({ mergeParams: true });
+
+************* 5. Web Cookies **********
+* Basic introduction about cookies: store data blocks about website, enhances user experience, used for personalisation, tracking, and session management.
+* In session management, the cookies store information about our current activity on the website, such as Amazon stores the items we've viewed and added to the cart, but not bought yet so it is not saved in the DB.
+* Cookies are stored in the form of { name, value } pair.
+
+************* 6. Sending Cookies **********
+* Cookies can be sent through a route in the form of a name value pair as shown
+
+app.get("/getCookies", (req, res) => {
+  res.cookie("greet", "hello");
+  res.cookie("origin", "India");
+  res.send("sent you some cookies");
+});
+
+*********** 7. Cookie Parser **********
+* It is a npm package that helps the server in reading cookies
+* It can be used as shown
+
+app.use(cookieParser());
+
+app.get("/", (req, res) => {
+  console.dir(req.cookies);
+  res.send("Hi, I am root!");
+});
+
+*********** 8. Signed Cookies **********
+* To protect the cookies from tampering or unintentional changes, we send signed cookies
+* In the next, step we verify that the cookies we received are signed or not.
+* Signed cookies can be sent like this
+
+app.use(cookieParser("secretcode")); // can be any string
+
+app.get("/getsignedcookie", (req, res) => {
+  res.cookie("made-in", "India", { signed: true });
+  res.send("signed cookie sent");
+});
+
+* The main reason behind signing of cookies is to ensure that it wasn't altered. Cookie data can be accessed even after signing.
+* Verification of signed cookie can be done as
+
+app.get("/verify", (req, res) => {
+  // console.log(req.cookies); // prints the unsigned cookies
+  console.log(req.signedCookies); // prints the signed cookies
+  res.send("verified");
+}); 
+
+NOTE: If the entire cookie value is altered, the output of req.signedCookies is an empty set and if only main value is altered and rest encryption is kept same, then cookie is printed as { "made-in", false }
+
+
+
+******************************************* PROJECT PHASE 2 (PART-C) ****************************************
+************ 1. What is state? *************
+* The set of rules obeyed by req and res are called protocols.
+* Stateful protocol require the server to save the status and session information, e.g. ftp
+* Stateless protocol do not require the server to retain the session information, e.g. http
+* In this module, we'll learn how to make our server behave in a stateful manner.
+
+*********** 2. Express Sessions ************
+* Express sessions' job is to make the http sessions, that are running in express, behave as stateful, that is to make them save some information related to the sessions.
+* Express session creates a session for all the users who visit the website, saves the information related to that session and assigns a sessionID to it.
+* Note that all this happens at the server side and here data is stored in some temporary storage, at the client side the server only sends the sessionID which is stored in the browser's memory in the form of cookies.
+* Express session is an npm package that can be installed using 'npm i express-session'. It creates a middleware with many different options.
+* After installation, require it as: session = require("express-session")
+* One required option in express-session is the secret used to sign sessionID cookie, which can be either a string secret or an array of multiple secrets. A secret itself should not be easily parsed by a human and would best be a random set of characters. As we are just practising, we'll be using a very general string like this
+app.use(session({secret: "mysupersecretstring"}))
+
+*********** 3. Exploring session options **********
+* If we open the same website in different tabs in the same browser, it is considered as same session in express (i.e., the same user is trying to access the website using different tabs), but if it is opened in a different browser, it is handled as a separate session.
+* To remove the deprecated warnings from node, we set the options resave as false and saveUninitialized as true. 'resave' saves the session information in the memory even if there has been no change in the session, and 'saveUninitialized' saves the session information even if the session is not initialized yet.
+NOTE: The 'MemoryStore' (default server side session storage) is purposely not designed for a production environment. It will leak memory under most conditions, does not scale past a single process, and is meant for debugging and developing.
+For production phase, we need to use other compatible stores such as Cassandra store, mongo store, etc. 
+
+********* 4. Storing and using session info ********
+* Better way of defining session options: create a variable 'sessionOptions' and pass that variable into the session function.
+const sessionOptions = {
+  secret: "mysupersecretstring",
+  resave: false,
+  saveUninitialized: true,
+};
+
+app.use(session(sessionOptions));
+
+* req.session is a middleware that stores the session info. We can define variables in it such as count, name, etc.
+app.get("/register", (req, res) => {
+  let { name = "anonymous" } = req.query;
+  req.session.name = name;
+  res.redirect("/hello");
+});
+
+app.get("/hello", (req, res) => {
+  res.send(`hello, ${req.session.name}`);
+});
+
+********** 5. Using flash-connect *********
+* The flash is a special area of session used for storing messages. Messages are written to the flash and are cleared after being displayed to the user. It is typically used in combination with redirects.
+* connect-flash can only be used with session.
+* It is an npm package and can be installed using 'npm i connect-flash'. Don't forget to require it.
+* To use connect-flash, we simply write 'app.use(flash())'. Now, to display a message before a res.redirect(), we use 'req.flash("<key>", "<msg>")', where key is the identifier string of this flash and msg is message contained in the flash.
+* A flash won't be visible just yet. To show it on the page, we make an ejs template for it and pass this message as a variable to this template, again by using req.flash() method, but this time only key is passed and the message gets extracted from it, as shown in below code:
+
+app.get("/hello", (req, res) => {
+  // res.send(`hello, ${req.session.name}`);
+  res.render("page.ejs", { name: req.session.name, msg: req.flash("success") });
+});
+
+********* 6. Using res.locals() *********
+* To use flash messages in a better way, we use res.locals(), by using this we don't need to explicitly pass the message variables in res.render() as they get saved in res.locals(). It is typically useful when we have more no. of messages to flash.
+
+app.get("/register", (req, res) => {
+  let { name = "anonymous" } = req.query;
+  req.session.name = name;
+  if (name == "anonymous") {
+    req.flash("error", "user not registered");
+  } else req.flash("success", "user registered successfully!");
+  res.redirect("/hello");
+});
+
+app.get("/hello", (req, res) => {
+  res.locals.successMsg = req.flash("success");
+  res.locals.errorMsg = req.flash("error");
+  res.render("page.ejs", { name: req.session.name});
+});
+
+* Now these msg variables can be used in page.ejs as per requirement.
+* Even better way of doing this is through middlewares
+
+app.use((req, res, next) => {
+  res.locals.successMsg = req.flash("success");
+  res.locals.errorMsg = req.flash("error");
+  next();
+});
+app.get("/hello", (req, res) => {
+  res.render("page.ejs", { name: req.session.name});
+});
+
+
+************ 7. Implement sessions in project *********** 
+* Install and require 'express-session' in app.js using 'npm i express-session' and 'const session = require("express-session");'
+
+* Define the session options secret, resave and saveUninitialized
+const sessionOptions = {
+  secret: "mysupersecretcode",
+  resave: false,
+  saveUninitialized: true,
+};
+
+* To use express-session write 'app.use(session(sessionOptions))'. To check whether it is working or not, start the server and inspect the site -> go to application tab -> check for cookies -> if connect.sid exists, its working.
+
+*********** 8. cookie in sessionOptions **********
+* By default cookies don't have an expiry date and they get deleted whenever we close the browser in most cases. But, a custom age can be set for the cookie. We need to write the total time in milliseconds in sessionOptions in 'expires' cookie option.
+const sessionOptions = {
+  secret: "mysupersecretcode",
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // (time in milliseconds)
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+    httpOnly: true,
+  },
+};
+
+* To check if the expiry date exists for the cookie, check for the 'Expires/Max-Age' column in Application tab in inspect window.
+
+************ 9. Implement flash in project **********
+* Install and require 'connect-flash'. Now write 'app.use(flash());' to use flash.
+NOTE: app.use(flash()) should be written before the routes in which flash is supposed to be used, because we will use flash with the help of those routes only.
+
+* Add 'req.flash("success", "New Listing Created!")' right before the redirect statement in the route that creates a new review, as we wish to display this message right after a new listing is added. Now this flash can be accessed in a middleware in app.js
+
+* The middleware is shown below, and it should be placed before the listing routes.
+app.use((req, res, next) => {
+  res.locals.success = req.flash("success");
+  next();
+});
+NOTE: Don't forget write next or else the control might get stuck in the middleware itself.
+
+* Lastly, add the 'success' message atop in index.ejs
+
+************ 10. Flash Success includes **********
+* Instead of displaying the flash message through 'index.ejs', we will display it through the boilerplate. To do this, we make a file 'flash.ejs' in the 'includes' folder and include in 'boilerplate.ejs' just before the body because thats where it should be displayed.
+'<%- include("../includes/flash.ejs") %>'
+
+* Bootstrap styling is added to the flash message 
+<!-- Added the below conditions because we don't want to show an empty alert. 'success' is an array so it will always exist, therefore we check if its length is zero. -->
+<% if(success && success.length) { %>
+<div
+  class="alert alert-success alert-dismissible fade show col-6 offset-3"
+  role="alert"
+>
+  <%= success %>
+  <button
+    type="button"
+    class="btn-close"
+    data-bs-dismiss="alert"
+    aria-label="Close" 
+  ></button>
+</div>
+<% } %>
+
+* After that we added this flash message to all other updation, deletion and creation methods.
+
+********** 11. Flash failure includes **********
+* Followed a similar approach to handle the error that will be encountered when someone searches for a deleted listing or for the edit route of a deleted listing.
+
+STEP 1: Added the condition of non existence of listing in SHOW ROUTE and EDIT ROUTE
+if (!listing) {
+      req.flash("error", "The Listing you requested for does not exist!");
+      res.redirect("/listings");
+    }
+STEP 2: Defined this error variable and stored in res.locals in app.js
+app.use((req, res, next) => {
+  res.locals.success = req.flash("success");
+  res.locals.error = req.flash("error");
+  next();
+});
+STEP 3: Added the error message in flash.ejs
+<% if(error && error.length) { %>
+<div
+  class="alert alert-success alert-dismissible fade show col-6 offset-3"
+  role="alert"
+>
+  <%= error %>
+  <button
+    type="button"
+    class="btn-close"
+    data-bs-dismiss="alert"
+    aria-label="Close"
+  ></button>
+</div>
+<% } %>
+
+******************************************* PROJECT PHASE 2 (PART-D) ****************************************
+************ 1. Authentication vs Authorization ***********
+* Authentication is the process of verifying who someone is.
+* Authorization is the process of verifying what specific applications, files, and data the user has access to.
+
+************ 2. How are passwords stored *********
+* We never store the passwords as it is, for obvious reasons. We store their hashed forms. Hashed form is generated using a hashing function.
+* When a user tries to login to the website/application, the password entered by him is again passed into the hashing function and its output is compared with the one stored in DB, and if they match, user is allowed to login.
+NOTE: For the same input, the hashing function's output will remain same.
+
+*********** 3. What is Hashing **********
+* In hashing:
+	> For every input, there is a fixed output. (if input is same then output is same)
+	> One way functions are used, that is, we cannot get the input from output. ( modulus, modulo operator, are common one way function)
+	> For different input, there are different outputs but of same length.
+	> Small changes in input should bring large changes in output.
+* Some common hashing functions are SHA256, MD5, CRC, bcrypt, etc.
+
+********** 4. Salting *********
+* We add a little amount of salt to the food to make it more savoury, similarly we add some extra strings to the passwords to make it more secure.
+* Each company has its own unique salt, that is, a unique string that is appended at the end, beginning or in middle of the password so that the hashed form generated should not match with that of the common passwords. 
+
+********* 5. Passport - Getting Started *********
+* passportjs.org
+* Passport is an authentication middleware for Node.js. It can be used with express-based web applications and supports authentication using a username and password, facebook, X, google and more.
+* In this module, we'll start with our basic local module. First of all we install some libraries as shown:
+npm i passport
+nmp i passport-local
+npm i passport-local-mongoose // Installed this library as upper two work fine only with SQL and other databases, and not with MongoDB and this library assists the working of Passport with MongoDB.
+
+********* 6. User Model ***********
+* To use passport-local, we will create a user model to provide a username and password to all users. Albeit, we can create many fields in our user model but we will keep it simple and add only a username, email and password.
+
+const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
+const passportLocalMongoose = require("passport-local-mongoose");
+
+const userSchema = new Schema({
+  email: {
+    type: String,
+    required: true,
+  },
+}); // We did not add the username and password here because passportLocalMongoose provides with a username and password itself alongwith some methods, that can be added through plugin.
+
+userSchema.plugin(passportLocalMongoose); // The plugin adds fields for username and password to the schema, as well as methods for password hashing, authentication, and other useful functionalities for handling user authentication.
+
+module.exports = mongoose.model("User", userSchema);
+
+* We used passportLocalMongoose as a plugin because it adds a username and hashed password to our schema alongwith methods like resetPassword, authenticate, etc. so that we don't need to build everything from scratch.
+
+*********** 7. Configuring Strategy ************
+* In this module, we will learn to apply the basic settings to our local strategy. Firstly, we require some stuff
+const passport = require("passport");
+const localStrategy = require("passport-local");
+const User = require("./models/user.js");
+
+* As we need to ensure that if the same user tries to access the website from different tabs in same browser or visits different pages of website, he should not be asked for logging in again and again, that is he should not be asked to login again in the same session, therefore passport also makes use of session and hence passport's code is written after session implementation. Code is shown below:
+
+app.use(passport.initialize()); // A middleware that initializes passport
+app.use(passport.session()); // Used this to give our web application the ability to identify users from page to page. This enables each request to know that it is part of which session.
+passport.use(new LocalStrategy(User.authenticate())); // This line authenticates all the users through the in-built static authentication method model in LocalStrategy.
+
+passport.serializeUser(User.serializeUser()); // After a user has logged-in, this method is used to store his info in the session
+passport.deserializeUser(User.deserializeUser()); // This method is used to remove the stored info from the session, after the user ends the session.
+
+************ 8. Demo User ***********
+* In this module, we will create a new route '/demouser', that will create a fakeUser for us.
+
+app.get("/demouser", async (req, res) => {
+  let fakeUser = new User({
+    email: "koshubhai@gmail.com",
+    username: "koshu",
+  }); // Note that in our user model we only defined email and no username, but still we can add a username here as because passportLocalMongoose automatically adds a username.
+
+  let registeredUser = await User.register(fakeUser, "fitkoshu"); // register is a convenient method to register a new user instance with a given password. It also checks if the username is unique.
+  res.send(registeredUser);
+});
+
+* Passport uses pbkdf2 hashing algorithm.
+
+********* 9. Signup User **********
+* Created a new user route 'user.js' in 'routes/' for user signup/login. 
+const express = require("express");
+const router = express.Router();
+
+router.get("/signup", (req, res) => {
+  res.render("users/signup.ejs");
+});
+
+module.exports = router;
+
+* Changed the names of listings, reviews and users to listingRouter, reviewRouter and userRouter in app.js
+const listingRouter = require("./routes/listing.js");
+const reviewRouter = require("./routes/review.js");
+const userRouter = require("./routes/user.js");
+
+* Created a folder 'users' in 'views' to create the view 'signup.ejs'
+* signup.ejs contains a form that accepts a username, email and password. Has bootstrap styling.
+* Added the userRouter middleware: app.use("/", userRouter);
+
+********** 10. SignUp user - POST **********
+* Created a route that accepts the post request sent by the signup form. As we make changes in DB here, so it is async process and hence we used async/await.
+* To handle the same username error, we added wrapAsync() to our code.
+* Simply adding wrapAsync() was redirecting us to a page that had nothing in it and the user would feel lost in the website, so to enhance the user experience we handled this by using try-catch as well.
+* In the catch, we flashed the error message and then redirected the page to the signup form again.
+
+router.post(
+  "/signup",
+  wrapAsync(async (req, res) => {
+    try {
+      let { username, email, password } = req.body;
+      const newUser = new User({ username, email });
+      const registeredUser = await User.register(newUser, password);
+      console.log(registeredUser);
+      req.flash("success", "Welcome to Wanderlust!");
+      res.redirect("/listings");
+    } catch (e) {
+      req.flash("error", e.message);
+      res.redirect("/signup");
+    }
+  })
+);
+
+********* 11. Login User *********
+* Created a new route that accepts get request for /login and redirects to login.ejs, which consists of the same form as that in signup.ejs, except for email and valid-feedback.
+* Created a new route that accepts post request for /login. To authenticate whether the user already exists in the DB or not, we use a passport middleware 'passport.authenticate()' before the async callback in route. This middleware also checks for correct password.
+* This middleware takes in the strategy and some options like 'failureRedirect' which redirects to our desired page in case of failure, and 'failureFlash' which is set to true and displays a flash message in case of failure.
+
+router.post(
+  "/login",
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
+  async (req, res) => {
+    req.flash("success", "Welcome back to Wanderlust!");
+    res.redirect("/listings");
+  }
+);
+
+******************************************* PROJECT PHASE 2 (PART-E) ***************************************
+************ 1. Connecting Login Route ************
+* In this module we implement the functionality of logging in before creating a new listing. If the user is not logged in, he won't be able to create one.
+* To check if the user is logged in, we use the inbuilt method of passport 'req.isAuthenticated()' to check if the user whose information is saved in session is authenticated or not.
+* We check this just before rendering the new listing form in the new route.
+// NEW ROUTE
+router.get("/new", (req, res) => {
+  if (!req.isAuthenticated()) {
+    req.flash("error", "You must be logged in to create a new listing");
+    return res.redirect("/listings");
+  }
+  res.render("listings/new.ejs");
+});
+
+* We can also redirect to the login page instead of listings 
+router.get("/new", (req, res) => {
+  console.log(req.user); // shows the essential info (username, email) of the user that is saved in the session.
+  if (!req.isAuthenticated()) {
+    req.flash("error", "You must be logged in to create a new listing");
+    return res.redirect("/login");
+  }
+  res.render("listings/new.ejs");
+});
+
+* Now, a user should be logged in even when updating or deleting a listing, and this functionality can be either added by copying the same logic in all the routes or by creating a middleware for the same.
+* So we create a new file 'middleware.js' in the same folder as app.js and create this middleware in it.
+module.exports.isLoggedIn = (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    req.flash("error", "You must be logged in to do the same!");
+    return res.redirect("/login");
+  }
+  next();
+};
+
+* Then we require this file in 'listing.js' route and pass this function as a middleware to our 'new' route.
+const { isLoggedIn } = require("../middleware.js");
+// NEW ROUTE
+router.get("/new", isLoggedIn, (req, res) => {
+  res.render("listings/new.ejs");
+});
+
+* Similarly, this functionality can be added in the create, edit, update and delete route. We need to add it separately in the create and new route because if a user is sending the post request from some other tools like POSTMAN or HOPPSCOTCH, then he might be able to create the listing without being logged in. Same goes for the edit and update route.
+
+************ 2. Logout user *************
+* To logout an user, we'll use passport's inbuilt method req.logout(), which uses deserializeUser() to remove the user's info from the session and the user gets logged out.
+* req.logout() is implemented in the user.js route
+router.get("/logout", (req, res, next) => {
+  req.logout((err) => {
+    if (err) {
+      return next(err);
+    }
+    req.flash("success", "You are logged out!");
+    res.redirect("/listings");
+  });
+});
+
+********** 3. Add styling **********
+* In this module, we add the signup, login and logout links to our website in the navbar.
+* To do so, we add all the three links in navbar.ejs with same styling as home, all listings and add new listing.
+      <div class="navbar-nav ms-auto">
+        <a class="nav-link" href="/signup">Signup</a>
+        <a class="nav-link" href="/login">Login</a>
+        <a class="nav-link" href="/logout">Logout</a>
+      </div>
+
+* But that's not how it should be, as a user should see only the logout option if he is logged in and he should see signup/login if he is logged out. So we do this by checking whether the 'req.user' object exists or not, and if it does that means user is logged in.
+NOTE: We cannot directly access the req object in ejs template, but we can access the local variables in res.locals, so we create a new variable 'currUser' in app.js and access req.user through it.
+
+app.use((req, res, next) => {
+  res.locals.success = req.flash("success");
+  res.locals.error = req.flash("error");
+  res.locals.currUser = req.user;
+  next();
+});
+
+*********** 4. Login after Signup **********
+* In this module, we implement automatic login after signup using passport's req.login() method which logs in the newly registered user. It is implemented in the post request of signup in user.js route
+router.post(
+  "/signup",
+  wrapAsync(async (req, res) => {
+    try {
+      let { username, email, password } = req.body;
+      const newUser = new User({ username, email });
+      const registeredUser = await User.register(newUser, password);
+      // console.log(registeredUser);
+      req.login(registeredUser, (err) => {
+        if (err) {
+          return next(err);
+        }
+        req.flash("success", "Welcome to Wanderlust!");
+        res.redirect("/listings");
+      });
+    } catch (e) {
+      req.flash("error", e.message);
+      res.redirect("/signup");
+    }
+  })
+);
+
+************ 5. post Login page ************
+* After the user logs in, in every case he'll be redirected to '/listings' and if he was prompted to log in when he tried to add a new listing, after logging in he will be redirected to '/listings' instead of the new listing page and that is an inconvenience for the user. To tackle this we'll use the request object which has a originalUrl that stores the complete path the user was trying to access before logging in.
+* So we create a new session variable 'redirectUrl' (in middleware.js) to store req.originalUrl, and use it in login route as redirect link.
+
+module.exports.isLoggedIn = (req, res, next) => {
+  console.log(req);
+  if (!req.isAuthenticated()) {
+    req.session.redirectUrl = req.originalUrl;
+    req.flash("error", "You must be logged in to do the same!");
+    return res.redirect("/login");
+  }
+  next();
+};
+
+router.post(
+  "/login",
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
+  async (req, res) => {
+    req.flash("success", "Welcome back to Wanderlust!");
+    res.redirect(req.session.redirectUrl);
+  }
+);
+* But this won't work because by default passport resets the req object after login, so req.session.redirectUrl becomes undefined and it throws an error. To handle this, req.session.redirectUrl can be saved in res.locals and as passport does not delete locals, it'll work. We create another middleware in middleware.js to save the redirectUrl, and then require it in routes/user.js and use it in login route before passport logs in the user.
+
+module.exports.saveRedirectUrl = (req, res, next) => {
+  if (req.session.redirectUrl) {
+    res.locals.redirectUrl = req.session.redirectUrl;
+  }
+  next();
+};
+
+router.post(
+  "/login",
+  saveRedirectUrl,
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
+  async (req, res) => {
+    req.flash("success", "Welcome back to Wanderlust!");
+    res.redirect(res.locals.redirectUrl);
+  }
+);
+
+* This works fine but there is one more flaw, when we login from home page directly 'isLoggedIn' does not get triggered and req.session.redirectUrl stays undefined, which leads to "Page not found" error. To tackle this we check whether redirectUrl exists or not and if it doesn't, we redirect to /listings
+
+router.post(
+  "/login",
+  saveRedirectUrl,
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
+  async (req, res) => {
+    req.flash("success", "Welcome back to Wanderlust!");
+    let redirectUrl = res.locals.redirectUrl || "/listings"; // CHECKING LOGIC
+    res.redirect(redirectUrl);
+  }
+);
+
+*************** 6. Listing Owner **************
+* In this module we will create a owner functionality for every listing and to do so an owner field will be added in the listingSchema. The new field in listingSchema will be like
+
+owner: {
+    type: Schema.Types.ObjectId,
+    ref: "User", // It references to a user because every listing owner must be a registered user on our website
+  },
+
+* Earlier when we initialized our DB, there was no owner field in that. So now either we can add an owner field separately into each listing in data.js and reinitialize the DB which is a very tedious task, or we can follow the better way of using map function which adds the owner field to every listing. nehamotwani will be the owner of all listings for now. The map function is added in init/index.js
+
+const initDB = async () => {
+  await Listing.deleteMany({});
+  initData.data = initData.data.map((obj) => ({
+    ...obj,
+    owner: "66659c5722d65887fb9ec3ce",
+  })); // This map function does not change the original array but returns a new array with the required changes, so we assign initData.data to that new array.
+  await Listing.insertMany(initData.data);
+  console.log("data was initialized");
+};
+
+* To display owner info in show route, we first populate owner in listing object in routes/listing.js, just like we did with reviews
+const listing = await Listing.findById(id)
+      .populate("reviews")
+      .populate("owner");
+Then we add owner's name before description in show.ejs
+	  <p class="card-text">
+            Owned by <i><%= listing.owner.username %></i>
+            <ul>
+              <li><%=listing.description%><br /></li>
+              <li>&#8377;<%=listing.price.toLocaleString("en-IN")%><br /></li>
+              <li><%=listing.location%><br /></li>
+              <li><%=listing.country%><br /></li>
+            </ul>
+          </p>
+* Now, if a user creates a new listing, no username is added to the listing, to fix this we create the owner field in newListing object in create route of listing.js
+
+newListing.owner = req.user;
+
+*************** 7. Starting with authorization ***************
+* To start with authorization, first thing we can do is to hide the edit and delete listing button for the users who didn't create that listing. To do so, we compare the currUser's ID and owner's ID in show.ejs before displaying the edit and delete buttons
+
+   <%if(currUser && currUser._id.equals(listing.owner._id)){%>
+      <div class="btns offset-3">        
+        <form method="GET" action="/listings/<%=listing._id%>/edit">
+          <button class="btn btn-dark add-btn">Edit</button>
+        </form>
+        <form
+          method="POST"
+          action="/listings/<%=listing._id%>?_method=DELETE"
+        >
+          <button class="btn btn-dark offset-4">Delete</button>
+        </form>
+      </div>
+      <div class="col-8 offset-3">
+        <hr>
+    <%}%> 
+* Till now we've only hid the edit and delete buttons from the frontend, and if someone tries to send an edit or delete request using POSTMAN, HOPPSCOTCH, etc he will be able to, and this will handled in next module.
+
+*************** 8. Authorization for _listings **************
+* Added a check for equivalence of owner's id and currUser's id before updation in update route in listing.js
+// UPDATE ROUTE
+router.put(
+  "/:id",
+  isLoggedIn,
+  validateListing,
+  wrapAsync(async (req, res) => {
+    const { id } = req.params;
+    let listing = await Listing.findById(id);
+    if (!listing.owner._id.equals(res.locals.currUser._id)) {
+      req.flash("error", "You are not authorized to do that!");
+      return res.redirect(`/listings/${id}`);
+    }
+    await Listing.findByIdAndUpdate(id, { ...req.body.listing }); // Deconstructing the req.body.listing object to the values as invidual parameters.
+    req.flash("success", "Listing updated!");
+    res.redirect(`/listings/${id}`);
+  })
+);
+
+* Now to add the same functionality in edit and delete routes, we create a middleware and add it in all the required routes
+module.exports.isOwner = async (req, res, next) => {
+  const { id } = req.params;
+  let listing = await Listing.findById(id);
+  if (!listing.owner._id.equals(res.locals.currUser._id)) {
+    req.flash("error", "You are not authorized to do that!");
+    return res.redirect(`/listings/${id}`);
+  }
+  next();
+};
+
+* We also restructure the code the by moving the validateListing and validateReviews middlewares to middleware.js
+
+************* 9. Authorization for reviews ***********
+* Created a new field 'author' in reviews 
+author: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+  },
+* Added the functionality that option of adding a review will only be visible when a user is logged in. Done this by simply checking whether currUser exists before rendering the review form in show.ejs
+* To protect the backend, we added the isLoggedIn middleware in SHOW REVIEW ROUTE
+ 
+*********** 10. Authorization for reviews part 2 **********
+* Now we wish to add author's name to the reviews, that means every listing should have the reviews associated with it and every reviews should have the author associated with it, so we will use nested populate in show route in listing.js
+const listing = await Listing.findById(id)
+      .populate({ path: "reviews", populate: { path: "author" } })
+      .populate("owner");
+* Now we add <%= review.author.username %> instead of 'Brad Pitt' in show.ejs in review title, and delete all the existing reviews as well as they did not have any usernames.
+* Now we protected the delete review route by creating a middleware that checks whether the user is the author of that review or not and if he isn't he won't be able to delete that review. First we added the middleware isLoggedIn and then we added isReviewAuthor in DELETE REVIEW ROUTE in review.js
+
+module.exports.isReviewAuthor = async (req, res, next) => {
+  const { id, reviewId } = req.params;
+  let review = await Review.findById(reviewId);
+  if (!review.author.equals(res.locals.currUser._id)) {
+    req.flash("error", "You did not create that review!");
+    return res.redirect(`/listings/${id}`);
+  }
+  next();
+};
+
+
+******************************************* PROJECT PHASE 3 (PART-A) *********************************************
+*************** 1. MVC - Model, View, Controller ************
+* MVC is a method of writing code, a design pattern in which the entire code is divided into three components: Models, Views and Controllers. Models store the core functionality of database (schemas), Views store the core functionality of frontend and Controllers store the core functionality of backend (the actual work that is being done)
+* We moved the callback in INDEX ROUTE in listing.js to controllers/listing.js and imported this file in routes/listing.js.
+
+************** 2. MVC for Listings ************
+* Moved all the callbacks of routes/listing.js to controllers/listing.js
+
+************* 3. MVC for reviews and users ************
+* Moved all the callbacks in routes/review.js to controllers/review.js and those in routes/user.js to controllers/user.js
+
+************* 4. Router.route ***********
+* The routes written in routes/listing.js have repetitive routes and can be written in a more compact form using router.route as shown below
+
+CODE BEFORE USING router.route
+// INDEX ROUTE
+router.get("/", wrapAsync(listingController.index));
+// CREATE ROUTE
+router.post(
+  "/",
+  isLoggedIn,
+  validateListing,
+  wrapAsync(listingController.createListing)
+);
+// SHOW ROUTE
+router.get("/:id", wrapAsync(listingController.showListing));
+// UPDATE ROUTE
+router.put(
+  "/:id",
+  isLoggedIn,
+  isOwner,
+  validateListing,
+  wrapAsync(listingController.updateListing)
+);
+// DELETE ROUTE
+router.delete(
+  "/:id",
+  isLoggedIn,
+  isOwner,
+  wrapAsync(listingController.destroyListing)
+);
+
+CODE AFTER USING router.route
+router
+  .route("/")
+  .get(wrapAsync(listingController.index))
+  .post(
+    isLoggedIn,
+    validateListing,
+    wrapAsync(listingController.createListing)
+  );
+router
+  .route("/:id")
+  .get(wrapAsync(listingController.showListing))
+  .put(
+    isLoggedIn,
+    isOwner,
+    validateListing,
+    wrapAsync(listingController.updateListing)
+  )
+  .delete(isLoggedIn, isOwner, wrapAsync(listingController.destroyListing));
+
+* Similarly it can be implemented in routes/user.js
+
+CODE BEFORE
+router.get("/signup", userController.renderSignupForm);
+
+router.post("/signup", wrapAsync(userController.signup));
+
+router.get("/login", userController.renderLoginForm);
+
+router.post(
+  "/login",
+  saveRedirectUrl,
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
+  userController.login
+);
+
+CODE AFTER
+router
+  .route("/signup")
+  .get(userController.renderSignupForm)
+  .post(wrapAsync(userController.signup));
+
+router
+  .route("/login")
+  .get(userController.renderLoginForm)
+  .post(
+    saveRedirectUrl,
+    passport.authenticate("local", {
+      failureRedirect: "/login",
+      failureFlash: true,
+    }),
+    userController.login
+  );
+
+*********** 5. Re-style ratings **********
+* We used the GitHub starability package to implement star functionality in our rating system.
+* STEPS: 
+	1. Copy the starability-growRotate.css code in public/css/rating.css
+	2. Copy the fieldset from 'How to use' in 'readme.md' below rating form in show.ejs
+	3. Change the name of each field to review[rating]
+	4. Added static star rating (rating in submitted reviews) functionality by copying static code from readme
+
+********** 6. Image Upload **********
+* There are two problems in our new listing form because of which image cannot be uploaded.
+	1. Our form cannot send files to backend because it is not designed to do so.
+	2. Even if we fix our form and send files to backend, mongodb won't be able to store them because it stores data in bson format and individual bson file has a size limit in mongodb that is less than the average size of an image.
+
+* To fix this, we will follow these steps
+	1. First we will make our form capable of sending data to backend.
+	2. We won't use mongodb to store the files sent to backend, instead we will use a third party service such as 
+AWS or Microsoft Azure or Google Drive. But these services are paid and are used in production phase, and in development phase we use a free service.
+
+********* 7. Manipulating form ********
+* Our form cannot send data to backend because it uses urlencoded data. To enable it to send data to backend, another type of encoding is required. So we add the field enctype to our form and make it equal to 'multipart/form-data', which is used for files.
+      <form
+        method="POST"
+        action="/listings"
+        novalidate
+        class="needs-validation"
+        enctype="multipart/form-data"
+      >
+* But right now our backend won't be able to understand multipart/form-data format as we only parse urlencoded data format. To parse multipart/form-data format we'll use the npm package multer. Multer is a nodejs middleware for handling multipart form data and it will not process any data which is not multipart.
+* First of all we install (), require and initialize multer.
+const multer = require("multer");
+const upload = multer({dest: "uploads/"}); // If this folder does not exist, multer will create it.
+NOTE: This storing the files in a folder is temporary method, later on we'll be using a cloud to store our files. 
+
+* To actually save our uploaded file, we use the middleware 'upload.single("filename")' like this
+.post(upload.single('listing[image]')(req, res) => {
+    res.send(req.file);
+  });
+
+********** 8. Cloud Storage **********
+* We'll use cloudinary as our cloud storage. Now, cloudinary consists of Product Environment Credentials (CloudName, API Key, API Secret) that are supposed to be included in a code (.env file), but this should not be shared with anyone and should not be uploaded online on any platform.
+* We create a '.env' file to store our credentials and it has fixed format of data input (KEY=value).
+
+SECRET=iwannabewithyou
+
+* Once the environment variables are saved in '.env', they can be used anywhere in the project. But they cannot be accessed directly, and to access them we install a library 'dotenv', which connect our '.env' file to our backend. Dotenv is a zero-dependency module that loads environment variables from '.env' to process.env.
+
+* To use it, we first install it (npm i dotenv) and then we require it in app.js and execute the config() method and then console.log() the environment variables.
+require("dotenv").config();
+console.log(process.env.SECRET);
+
+* dotenv is used only in development phase and not in production phase because we cannot upload the .env file online, and in production phase we'll be using a different method to store our credentials. So here we add a condition that checks that we're not in production phase and only then it uses .env file.
+if (process.env.NODE_ENV != "production") {
+  require("dotenv").config();
+}
+console.log(process.env.SECRET);
+
+* Now we remove the useless info (SECRET) from .env and add the actual required info, that is, CLOUD_NAME, CLOUD_API_KEY and CLOUD_API_SECRET.
+
+*********** 9. Store files **********
+* Install two npm packages: cloudinary and multer-storage-cloudinary
+* Now create a new file 'cloudConfig.js' and require 'cloudinary' version 2 and multer-storage-cloudinary
+
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+* Now add configuration code. Configuration basically means making a connection. Here we are making a connection between our backend and cloudinary account.
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_API_KEY,
+  api_secret: process.env.CLOUD_API_SECRET,
+});
+NOTE: The names of variables in .env can be of our choice but the names in cloudinary.config() should be the default names only.
+
+* Now choose the storage, that is, the folder where files are supposed to be stored in that account.
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary, // This parameter is passing the configured Cloudinary instance to CloudinaryStorage
+  params: {
+    folder: "wanderlust_DEV",
+    allowedFormats: ["png", "jpg", "jpeg"],
+  },
+});
+
+* Now export cloudinary and storage from this file
+module.exports = {
+  cloudinary,
+  storage,
+};
+
+* Now require storage one line above upload in routes/listing.js and change the dest field in multer to storage.
+const { storage } = require("../cloudConfig.js");
+//  const upload = multer({ dest: "uploads/" }); // If this folder does not exist, multer will create it.
+const upload = multer({ storage }); 
+
+* Now our image is being sent to backend, backend is able to parse it and that image is being uploaded to cloudinary as well. What remains is to save this image URL into MongoDB.
+
+************ 10. Save Link in Mongo ***********
+* Before doing that, we will modify our image field in listing schema. Till now it only consisted of a url, but henceforth it will have a filename as well, which will be of use when we wish to update/delete this image.
+
+INITIAL IMAGE SCHEMA
+image: {
+    type: String,
+    default:
+      "https://vignette.wikia.nocookie.net/oggyandthecockroaches/images/e/ea/Oggy's_House.png/revision/latest?cb= 20180430192556",
+    set: (v) =>
+      v === ""
+        ? "https://vignette.wikia.nocookie.net/oggyandthecockroaches/images/e/ea/Oggy's_House.png/revision/latest?cb=20180430192556"
+        : v,
+  },
+
+FINAL IMAGE SCHEMA
+image: {
+    url: String,
+    filename: String,
+  },
+
+* To be able to save image info with this new schema in DB, we add a few lines in the createListing route
+module.exports.createListing = async (req, res, next) => {
+  let url = req.file.path; // new
+  let filename = req.file.filename; // new
+  const newListing = Listing(req.body.listing);
+  newListing.owner = req.user._id;
+  newListing.image = { url, filename }; // new
+  await newListing.save();
+  req.flash("success", "New Listing Created!");
+  res.redirect("/listings");
+};
+
+*********** 11. Display Image ***********
+* Changed data.js to images that contain a filename and url, reinitialized the DB.
+* After starting the server, no images were visible. Added .url to listing.image in index.ejs and show.ejs
+
+
+****************************************** PROJECT PHASE 3 (Part B) *****************************************
+************ 1. Edit Listing Image ***********
+* Alter the edit listing form such that it becomes capable of receiving an uploaded image.
+* STEPS:
+	1. Make the form capable of uploading files and sending them to backend by setting the enctype to "multipart/form-data"
+	2. Take the uploaded image and send it to cloudinary 
+	3. Make changes in DB
+* Also make the image field as required
+* For step 2, we add the middleware 'upload.single("listing[image]")' from the last module in put route of edit image, which makes the flow like: multer parses the file -> it gets saved on cloudinary -> then listing is validated.
+router.route("/:id")
+ .put(
+      isLoggedIn,
+      isOwner,
+      upload.single("listing[image]"),
+      validateListing,
+      wrapAsync(listingController.updateListing)
+     )
+
+* Then finally we make changes in controller, first we extract the url and filename from req.file and add them to the updated listing.
+module.exports.updateListing = async (req, res) => {
+  let { id } = req.params;
+  let listing = await Listing.findByIdAndUpdate(id, { ...req.body.listing });
+  if (typeof req.file !== "undefined") { // This is done because if no new image is uploaded in the edit form, req.file will be undefined and accessing its properties will lead to error.
+    let url = req.file.path;
+    let filename = req.file.filename;
+    listing.image = { url, filename };
+    await listing.save();
+  }
+  req.flash("success", "Listing Updated!");
+  res.redirect(`/listings/${id}`);
+};
+
+************ 2. Image preview for edit ***********
+* Added another div above the 'upload new image' in 'edit listing form'
+	<div class="mb-3">
+          <p>Original Listing Image</p>
+          <img src="<%= listing.image.url %>" />
+        </div>
+* But the problem here is that when we try to render the image like this, it shows in original quality and its just a waste of resources as we simply need a preview.
+* To handle this, we use cloudinary's inbuilt image transformations, using which we reduce the image's pixels before rendering it as we insert the parameters in url after 'upload' and before our 'imageId'.
+* We add this in renderEditForm in controllers/listing.js
+  	let originalImageUrl = listing.image.url;
+  	originalImageUrl = originalImageUrl.replace("/upload", "/upload/w_300");
+  	res.render("listings/edit.ejs", { listing, originalImageUrl }); 
+* And then we display this edited originalImageUrl in edit.ejs
+
+*********** 3. Getting Started with Maps **********
+* We'll use a maps API to show the location of our listing in show.ejs
+* We won't use google maps api because it asks for credit card info, instead we'll use mapbox api.
+* Maps' modules are left for later bcoz that freakin mapbox is also asking for credit card.
+
+
+********************************************* PROJECT PHASE 3 (Part C) ********************************************
+************* 1. Fixing Home Page ***********
+* Made the index.js page as home page. Wrote Signup, Login, Logout in bold.
+* Changed 'Add New Listing' to 'Airbnb your home' and moved it to the right.
+* Removed the '/' route (HOME ROUTE) from app.js
+
+************* 2. Add UI for filters **********
+* Removed 'All Listings' text from index.ejs and added a div to store all the filters.
+* Added the icons in the filters and div and styled them. Added the hover effect too.
+<style>
+  #filters {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .filter {
+    text-align: center;
+    margin-top: 2rem;
+    margin-right: 2rem;
+    opacity: 0.7;
+  }
+  .filter:hover {
+    opacity: 1;
+    cursor: pointer;
+  }
+  .filter p {
+    font-size: 0.8rem;
+  }
+</style>
+<div id="filters">
+  <div class="filter">
+    <div><i class="fa-solid fa-fire"></i></div>
+    <p>Trending</p>
+  </div>
+  <div class="filter">
+    <div><i class="fa-solid fa-bed"></i></div>
+    <p>Rooms</p>
+  </div>
+  <div class="filter">
+    <div><i class="fa-solid fa-mountain-city"></i></div>
+    <p>Iconic Cities</p>
+  </div>
+  <div class="filter">
+    <div><i class="fa-solid fa-mountain"></i></div>
+    <p>Mountains</p>
+  </div>
+  <div class="filter">
+    <div><i class="fa-solid fa-person-swimming"></i></div>
+    <p>Amazing Pools</p>
+  </div>
+  <div class="filter">
+    <div><i class="fa-brands fa-fort-awesome"></i></div>
+    <p>Castles</p>
+  </div>
+  <div class="filter">
+    <div><i class="fa-solid fa-cow"></i></div>
+    <p>Farms</p>
+  </div>
+  <div class="filter">
+    <div><i class="fa-solid fa-campground"></i></div>
+    <p>Camping</p>
+  </div>
+  <div class="filter">
+    <div><i class="fa-regular fa-snowflake"></i></div>
+    <p>Arctic</p>
+  </div>
+</div>
+
+********** 3. Add UI for tax switch **********
+* We can make those icons responsive by adding 'category' in the Listing Model. The categories can be listed down in an Enum in that section and the user will select all the categories in which their listing might belong to. The schema for category can be designed like this
+category: {
+	type: String,
+	enum: ["mountains", "city", "waterfalls", "rooms", "farms", ....]
+}
+
+Now when a user will click on a filter, only listings that include this category will be shown. 
+
+* Added the tax-toggler in filters div
+   <div class="tax-toggle">
+    <div class="form-check form-switch form-check-reverse">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        role="switch"
+        id="flexSwitchCheckDefault"
+      />
+      <label class="form-check-label" for="flexSwitchCheckDefault"
+        >Display total after taxes</label
+      >
+    </div>
+* Added an eventListener to it
+<script>
+  let taxSwitch = document.getElementById("flexSwitchCheckDefault");
+  taxSwitch.addEventListener("click", () => {
+    console.log("clicked");
+  });
+</script>
+
+NOTE: Add responsiveness to the filter-icon tray.
+
+********** 4. Making the tax switch functional *********
+* Difference between 'display: none' and 'visibility: hidden' is that in the latter the element continues to occupy space but does not show up on the screen and in the former the element vanishes from the screen and the allotted space is taken back as well.
+* Added a tax toggler and styled it
+.tax-toggle {
+    border: 1px solid black;
+    border-radius: 1rem;
+    padding: 1rem;
+    height: 3.5rem;
+    margin-left: 2rem;
+    display: flex;
+    align-items: center;
+  }
+
+<div class="tax-toggle">
+    <div class="form-check form-switch form-check-reverse">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        role="switch"
+        id="flexSwitchCheckDefault"
+      />
+      <label class="form-check-label" for="flexSwitchCheckDefault"
+        >Display total after taxes</label
+      >
+    </div>
+
+************ 5. Add UI for Search *************
+* Created and styled the search bar and search button
+<style>
+  .btn-search {
+    background-color: #fe424d;
+    color: #fff;
+    border-radius: 1.5rem;
+    padding: 0 1rem 0 1rem;
+  }
+  .btn-search:hover {
+    background-color: #fe424d;
+    color: #fff;
+  }
+  .btn-search i {
+    display: inline;
+    margin-right: 0.5rem;
+  }
+  .search-inp {
+    border-radius: 1.5rem;
+    padding: 0.5rem 3rem;
+  }
+  .search {
+    margin-top: 1rem;
+  }
+</style>
+
+     <div class="navbar-nav ms-auto search">
+        <form class="d-flex" role="search">
+          <input
+            class="form-control me-2 search-inp"
+            type="search"
+            placeholder="Search destinations"
+          />
+          <button class="btn btn-search" type="submit">
+            <i class="fa-solid fa-magnifying-glass"></i>Search
+          </button>
+        </form>
+      </div>
+
+
+****************************************** PROJECT PHASE 3 (Part D) *******************************************
+**************** 1. Using Mongo Atlas **************
+* We are using Mongo Atlas to host our DB because it deals with industry use cases, better performance and simple to use. And it also provides a lots of services for free.
+
+mongodb+srv://nikshay:Z8ZMo3MQQQNL5PQK@cluster0.xt9u9gp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+
+* In this module, we deploy our project on MongoDB Atlas. Firstly we created an account and password on Atlas, then we created a user 'nikshay' with an auto generated password. The we tried to connect to the DB so it asked for the IP address of our local host and then we pasted the above link in mongoose.connect() and then it displayed the website using the online DB. 
+NOTE: The code is still in the localhost only, that means that it is not deployed yet. Right now we are only using the online DB. 
+
+**************** 2. Mongo Session Store **************
+* Earlier while using express session, we used the default session storage which is not designed for production environment and can only be used in development environment. So we will use the mongo session store 'connect mongo'.
+* First of all we install connect-mongo and then require it below express session (it can only be used alongwith express session)
+npm i connect-mongo
+const MongoStore = require('connect-mongo');
+
+* Created a store object to store all the MongoStore parameters and then passed this object to sessionOptions
+const store = MongoStore.create({
+  mongoUrl: dbUrl,
+  crypto: {
+    secret: "mysupersecretcode",
+  },
+  touchAfter: 24 * 3600,
+});
+
+store.on("error", () => {
+  console.log("ERROR in MONGO SESSION STORE", err);
+}); // This is done to handle error before passing on the store object further.
+
+* Then we start the server and notice that on refreshing one more collection gets formed in Atlas, which stores the session info.
+
+************** 3. Deployment with render ************
+* First of all we sign up on render.com
+* Now before deploying we add the version of our node in our package.json file, as failing to do so might lead an error later. It is added at the top of the file.
+"engines": {
+    "node": "16.13.0"
+  },
+
+* Now we will upload our entire code on GitHub and connect that GitHub repo with render, so that when we make changes to our site, they get displayed on render as well.
+
+************* 4. Push Code to GitHub ************
+* We do a few things before pushing
+	> Delete the classroom folder
+	> Remove the MONGO_URL
+	> The secret that we were using in sessionOptions and store is removed from there and added to the .env file. The prior secret is replace with a random string and is stored in variable SECRET in .env, and then imported in app.js wherever required, using process.env.SECRET
+
+NOTE: We won't push .env (contains sensitive info) and node_modules (can be downloaded again anytime) into the git repo. To do so, we add the names of these files in a file named '.gitignore', and git doesn't consider them in any commit or push operation.
+
+* Now we're ready to use git. Follow the steps below
+git init
+git add . 
+git commit -m "Added Project Files"
+
+************* 5. Connect render with GitHub ************
+* First we created a git repo "WanderLust", and then connected this remote repo to our project folder.
+* Then we connected this git repo with render. In runtime, write 'Node', in build command write 'npm install' and in start command write 'node app.js'. Here we're are not using nodemon app.js bcoz we won't be making any changes that require restarting of the server.
+* Select the free tier in instance type and in advanced options toggle auto-deploy to "NO" because we will manually handle deploys.
+* Then click on 'create new service' to deploy the project and the deployment process will start. It will fail this time because we've not added the environment variables yet.
+
+************ 6. Create New Service ***********
+* Alongwith adding environment variables we will also configure Atlas. Initially our project was stored on our local system and our local system's IP was authorized to access the DB on Atlas, but now it is on Render, so we will add Render's IP in Atlas so that it gets access to the DB.
+* Go to the Environment option in the left panel in Render and add all the environment variables to it.
+* Go to Logs in left panel and click on Connect to view all the static outbound IP addresses. Now copy these address one by one and add them to Network Access in Atlas to whitelist them ( means to authorize them to access Atlas DB).
+* Now all the work is done, just click on clear build cache and deploy in manual deploy and your project will get deployed on render.
+
+
+************************************* ADDING SEARCH FUNCTIONALITY *************************************
+* Added 'action="/search"' in the search form
+        <form class="d-flex" role="search" action="/search">
+          <input
+            class="form-control me-2 search-inp"
+            type="search"
+            placeholder="Search destinations"
+          />
+          <button class="btn btn-search" type="submit">
+            <i class="fa-solid fa-magnifying-glass"></i>Search
+          </button>
+        </form>
+* Added a search route in app.js just before the other routes
+app.get("/search", (req, res) => {
+  res.send("Welcome to search route");
+});
+
+* Adding 'action="/search"' in the form troubled us as its not like we are displaying the filtered result only after the user presses the button, it continuously gets filtered.
+
+CODE IN APP.JS:
+app.get("/search", async (req, res) => {
+  const query = req.query.query;
+  let results;
+  try {
+    if (query) {
+      results = await Listing.find({
+        title: { $regex: query, $options: "i" }, // i for case-insensitive
+      });
+    } else {
+      results = await Listing.find();
+    }
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+CODE IN SCRIPT.JS:
+let searchInp = document.querySelector(".search-inp");
+let searchRes = document.querySelector(".search-res");
+
+searchInp.addEventListener("input", async () => {
+  const query = searchInp.value;
+  const response = await fetch(`/search?query=${encodeURIComponent(query)}`);
+  const results = await response.json();
+  displayResults(results);
+});
+
+async function fetchAllListings() {
+  const response = await fetch("/search");
+  const results = await response.json();
+  displayResults(results);
+}
+
+function displayResults(results) {
+  searchRes.innerHTML = ""; // Clear previous results
+  results.forEach((listing) => {
+    const link = document.createElement("a");
+    link.href = `/listings/${listing._id}`;
+    link.className = "listing-link";
+
+    const card = `
+      <div class="card col listing-card">
+        <img
+          src="${listing.image.url}"
+          class="card-img-top"
+          alt="listing_image"
+          style="height: 20rem"
+        />
+        <div class="card-img-overlay"></div>
+        <div class="card-body">
+          <p class="card-text">
+            <b>${listing.title}<br /></b>
+            &#8377;${listing.price.toLocaleString("en-IN")}/night
+            <i class="tax-info">&nbsp;&nbsp;+18% GST</i>
+            <br />
+          </p>
+        </div>
+      </div>
+    `;
+    link.innerHTML = card;
+    searchRes.appendChild(link);
+  });
+}
+
+fetchAllListings();
+
+
+********************************* ADDING HOME PAGE ********************************
+CODE IN APP.JS:
+app.get("/", (req, res) => {
+  res.render("home.ejs");
+});
+
+CODE IN HOME.EJS:
+<% layout("/layouts/boilerplate") %>
+<style>
+  .home {
+    text-align: center;
+    margin-top: 1rem;
+    border: 2px solid black;
+    border-radius: 1rem;
+    padding: 1rem 0;
+  }
+  h1 {
+    color: #fe424d;
+  }
+  .homeBtn {
+    background-color: #fe424d;
+    color: #fff;
+    border-radius: 1.5rem;
+    padding: 0.5rem 1.5rem;
+    font-size: 1.5rem;
+    margin-top: 3rem;
+  }
+  .homeBtn:hover {
+    background-color: #fff;
+    color: #fe424d;
+    border: 2px solid #fe424d;
+  }
+</style>
+<div class="home">
+  <h1>Welcome to WanderLust</h1>
+  <h2>Find Places to stay</h2>
+  <h2>Big, small, we have it all</h2>
+  <h2>Family-friendly stays with full kitchens</h2>
+  <a href="/listings"
+    ><button class="btn btn-lg homeBtn">Explore your stays!</button></a
+  >
+</div>
+
+
+
+
+
+
